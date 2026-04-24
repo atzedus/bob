@@ -1,6 +1,8 @@
 package gen
 
 import (
+	"fmt"
+
 	"github.com/stephenafamo/bob/gen/drivers"
 )
 
@@ -21,6 +23,11 @@ type Config[ConstraintExtra any] struct {
 	NoTests bool `yaml:"no_tests"`
 	// Disable back referencing in the loaded relationship structs
 	NoBackReferencing bool `yaml:"no_back_referencing"`
+	// Controls how the back-reference field of a self-referencing
+	// relationship is named in the generated R struct.
+	// Defaults to {Token: "Reverse", Joiner: "", Position: "prefix"} which
+	// preserves the historical behavior, e.g. ReverseParentRecords.
+	SelfJoinBackReference SelfJoinBackReferenceConfig `yaml:"self_join_back_reference"`
 	// Decides the casing for go structure tag names. camel, title or snake (default snake)
 	StructTagCasing string `yaml:"struct_tag_casing"`
 	// Relationship struct tag name
@@ -135,4 +142,98 @@ type Inflections struct {
 	Singular      map[string]string `yaml:"singular"`
 	SingularExact map[string]string `yaml:"singular_exact"`
 	Irregular     map[string]string `yaml:"irregular"`
+}
+
+// SelfJoinPosition controls where the configured token is placed
+// relative to the forward-side alias when constructing the name of the
+// back-reference field for a self-referencing relationship.
+type SelfJoinPosition string
+
+const (
+	SelfJoinPositionPrefix SelfJoinPosition = "prefix"
+	SelfJoinPositionSuffix SelfJoinPosition = "suffix"
+)
+
+// SelfJoinBackReferenceConfig configures how the back-reference field
+// of a self-referencing relationship is named in the generated R struct.
+//
+// The final field name is built by combining three independent pieces:
+//   - Token:    a literal word that disambiguates the back-reference from
+//               the forward side (e.g. "Reverse", "Children", "Dependents").
+//   - Joiner:   an optional connector inserted between Token and the
+//               forward-side alias (e.g. "" or "By").
+//   - Position: where Token (with Joiner) is placed relative to the
+//               forward alias — "prefix" or "suffix".
+//
+// Examples (assuming the forward alias is "ParentRecords"):
+//
+//	{Token: "Reverse",    Joiner: "",   Position: "prefix"} -> ReverseParentRecords     (default)
+//	{Token: "Children",   Joiner: "By", Position: "prefix"} -> ChildrenByParentRecords
+//	{Token: "Children",   Joiner: "",   Position: "suffix"} -> ParentRecordsChildren
+//	{Token: "Dependents", Joiner: "",   Position: "suffix"} -> ParentRecordsDependents
+//
+// Empty Token / Joiner / Position fall back to the defaults above so that
+// users can override only what they need.
+type SelfJoinBackReferenceConfig struct {
+	Token    string           `yaml:"token"`
+	Joiner   string           `yaml:"joiner"`
+	Position SelfJoinPosition `yaml:"position"`
+}
+
+// Defaults applied when the corresponding field is left empty in the
+// configuration. Kept as constants so they can be reused in tests and
+// documentation without drifting.
+const (
+	DefaultSelfJoinBackReferenceToken    = "Reverse"
+	DefaultSelfJoinBackReferenceJoiner   = ""
+	DefaultSelfJoinBackReferencePosition = SelfJoinPositionPrefix
+)
+
+// WithDefaults returns a copy of the configuration with empty fields
+// replaced by their defaults. It does not validate the configuration —
+// callers should run Validate separately when they want to surface
+// configuration errors.
+func (c SelfJoinBackReferenceConfig) WithDefaults() SelfJoinBackReferenceConfig {
+	if c.Token == "" {
+		c.Token = DefaultSelfJoinBackReferenceToken
+	}
+	if c.Position == "" {
+		c.Position = DefaultSelfJoinBackReferencePosition
+	}
+	// Joiner intentionally has no fallback: an empty joiner is a valid,
+	// common choice (e.g. "Reverse" + "ParentRecords").
+	return c
+}
+
+// Validate returns an error if the configuration would produce an
+// invalid back-reference name. It must be called on the value returned
+// by WithDefaults so that empty fields have already been resolved.
+func (c SelfJoinBackReferenceConfig) Validate() error {
+	switch c.Position {
+	case SelfJoinPositionPrefix, SelfJoinPositionSuffix:
+	default:
+		return fmt.Errorf(
+			"self_join_back_reference.position must be %q or %q, got %q",
+			SelfJoinPositionPrefix, SelfJoinPositionSuffix, c.Position,
+		)
+	}
+	if c.Token == "" {
+		return fmt.Errorf("self_join_back_reference.token must not be empty")
+	}
+	return nil
+}
+
+// Apply combines the configured Token, Joiner and Position with the
+// supplied forward-side alias to produce the final back-reference field
+// name. The configuration is normalized via WithDefaults first, so
+// callers may invoke Apply on a zero value to get the historical
+// "Reverse"-prefix behavior.
+func (c SelfJoinBackReferenceConfig) Apply(forwardAlias string) string {
+	c = c.WithDefaults()
+	switch c.Position {
+	case SelfJoinPositionSuffix:
+		return forwardAlias + c.Joiner + c.Token
+	default: // SelfJoinPositionPrefix and any unrecognized value
+		return c.Token + c.Joiner + forwardAlias
+	}
 }

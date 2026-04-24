@@ -13,7 +13,7 @@ func last(s string) string {
 	return ss[len(ss)-1]
 }
 
-func relAlias(rels []orm.Relationship) map[string]string {
+func relAlias(rels []orm.Relationship, selfJoinBackRef SelfJoinBackReferenceConfig) map[string]string {
 	aliases := map[string]string{}
 
 	for _, rel := range rels {
@@ -65,7 +65,7 @@ func relAlias(rels []orm.Relationship) map[string]string {
 
 	for k, alias := range aliases {
 		if strings.HasSuffix(k, selfJoinSuffix) {
-			aliases[k] = "Reverse" + alias
+			aliases[k] = selfJoinBackRef.Apply(alias)
 		}
 	}
 

@@ -16,7 +16,12 @@ import (
 //
 // This leaves us with a complete list of Go names for all tables,
 // columns, and relationships.
-func initAliases[C, I any](a drivers.Aliases, tables drivers.Tables[C, I], relMap Relationships) error {
+func initAliases[C, I any](
+	a drivers.Aliases,
+	tables drivers.Tables[C, I],
+	relMap Relationships,
+	selfJoinBackRef SelfJoinBackReferenceConfig,
+) error {
 	for _, t := range tables {
 		tableAlias := a[t.Key]
 		cleanKey := strings.ReplaceAll(t.Key, ".", "_")
@@ -59,7 +64,7 @@ func initAliases[C, I any](a drivers.Aliases, tables drivers.Tables[C, I], relMa
 		}
 
 		tableRels := relMap[t.Key]
-		computed := relAlias(tableRels)
+		computed := relAlias(tableRels, selfJoinBackRef)
 		for _, rel := range tableRels {
 			if _, ok := tableAlias.Relationships[rel.Name]; !ok {
 				tableAlias.Relationships[rel.Name] = computed[rel.Name]

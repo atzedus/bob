@@ -115,6 +115,11 @@ type Config struct {
 	NoTests bool `yaml:"no_tests"`
 	// Disable back referencing in the loaded relationship structs
 	NoBackReferencing bool `yaml:"no_back_referencing"`
+	// Controls how the back-reference field of a self-referencing
+	// relationship is named in the generated R struct.
+	// Defaults to {token: "Reverse", joiner: "", position: "prefix"} which
+	// preserves the historical behavior, e.g. ReverseParentRecords.
+	SelfJoinBackReference SelfJoinBackReferenceConfig `yaml:"self_join_back_reference"`
 	// Decides the casing for go structure tag names. camel, title or snake (default snake)
 	StructTagCasing string `yaml:"struct_tag_casing"`
 	// Relationship struct tag name
@@ -145,6 +150,7 @@ type Config struct {
 | tags                | Struct tags to generate                                                                                         | []                       |
 | no_tests            | Disable generating go test files                                                                                | false                    |
 | no_back_referencing | If this is set to true, when relationships are loaded, the parent is not added to the loaded object's relations | false                    |
+| self_join_back_reference | Controls the name of the back-reference field for self-referencing relationships. [See more](#self-join-back-reference) | `{token: "Reverse", joiner: "", position: "prefix"}` |
 | struct_tag_casing   | Decides the casing for go structure tag names. camel, title or snake (default snake)                            | "snake"                  |
 | relation_tag        | Struct tag for the relationship object                                                                          | "-"                      |
 | tag_ignore          | List of column names that should have tags values set to '-'                                                    | []                       |
@@ -204,6 +210,41 @@ aliases:
 ```
 
 :::
+
+### Self Join Back Reference
+
+When a table has a self-referencing foreign key (for example a `tree` table whose `parent_record_id` column references the same table's `id`), Bob generates two relationship fields on the model's `R` struct:
+
+- the **forward** side — the `*Tree` parent (e.g. `R.ParentRecord`).
+- the **back-reference** side — the `TreeSlice` of records that point back at the current row.
+
+The back-reference side needs a name that does not collide with the forward side. By default Bob composes that name as `Reverse` + the forward alias, producing `ReverseParentRecords`. The shape of that name is fully configurable via three independent fields:
+
+```yaml
+self_join_back_reference:
+  token:    Reverse  # any literal word, e.g. "Reverse", "Children", "Dependents"
+  joiner:   ""       # any literal connector inserted between token and the forward alias, e.g. "" or "By"
+  position: prefix   # "prefix" or "suffix"
+```
+
+The final field name is built by combining the three pieces:
+
+| `position` | Result |
+| ---------- | ------ |
+| `prefix`   | `<token><joiner><ForwardAlias>` |
+| `suffix`   | `<ForwardAlias><joiner><token>` |
+
+Examples (assuming the forward alias resolves to `ParentRecords`):
+
+| Configuration | Generated field |
+| ------------- | --------------- |
+| `{token: "Reverse",    joiner: "",   position: "prefix"}` (default) | `ReverseParentRecords` |
+| `{token: "Children",   joiner: "By", position: "prefix"}`           | `ChildrenByParentRecords` |
+| `{token: "Children",   joiner: "",   position: "suffix"}`           | `ParentRecordsChildren` |
+| `{token: "Dependents", joiner: "",   position: "suffix"}`           | `ParentRecordsDependents` |
+| `{token: "Referencing",joiner: "",   position: "prefix"}`           | `ReferencingParentRecords` |
+
+Empty fields fall back to the defaults listed above, so you only need to override the parts you actually want to change. The configuration applies **only** to back-reference fields generated for self-referencing foreign keys; ordinary foreign keys are unaffected.
 
 ### Constraints
 

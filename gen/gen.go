@@ -109,7 +109,11 @@ func Run[T, C, I any](ctx context.Context, s *State[C], driver drivers.Interface
 	if s.Config.Aliases == nil {
 		s.Config.Aliases = make(map[string]drivers.TableAlias)
 	}
-	if err := initAliases(s.Config.Aliases, dbInfo.Tables, relationships); err != nil {
+	selfJoinBackRef := s.Config.SelfJoinBackReference.WithDefaults()
+	if err := selfJoinBackRef.Validate(); err != nil {
+		return fmt.Errorf("invalid self_join_back_reference config: %w", err)
+	}
+	if err := initAliases(s.Config.Aliases, dbInfo.Tables, relationships, selfJoinBackRef); err != nil {
 		return fmt.Errorf("initializing aliases: %w\nSee: https://bob.stephenafamo.com/docs/code-generation/configuration#aliases", err)
 	}
 	if err = s.initTags(); err != nil {
