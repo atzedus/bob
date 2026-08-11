@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [v0.50.0] - 2026-08-11
 
 ### Added
 
@@ -358,8 +358,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added the `fallback_null` top level configuraiton option. Which can be either `database/sql` or `github.com/aarondl/opt/null`.  
-   This is used to determine how to create null values in the generated code. If set to `database/sql`, it will use `sql.Null[T]` for nullable types, and if set to `github.com/aarondl/opt/null`, it will use `opt.null.Val[T]`.  
-   The default value is `database/sql`.
+  This is used to determine how to create null values in the generated code. If set to `database/sql`, it will use `sql.Null[T]` for nullable types, and if set to `github.com/aarondl/opt/null`, it will use `opt.null.Val[T]`.  
+  The default value is `database/sql`.
 
 ### Fixed
 
@@ -380,7 +380,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The `bob.Transaction` interface now takes a `context.Context` argument in the `Commit` and `Rollback` methods.
 - The method `BeginTx` on the `bob.Transaction` interface is now changed to `Begin` and it takes a single context argument.  
-   This is to make it easier to implement for non `database/sql` drivers.
+  This is to make it easier to implement for non `database/sql` drivers.
 - In the generated model, the `PrimaryKeyVals()` method is now private.
 - Renamed `driver_name` to `driver` in code generation configuration.
 - In type replacements, nullability is not used in matching.
@@ -473,11 +473,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ```
 
 - In the generated model code, `Preload` is now a struct instead of multiple standaalone functions.  
-   It is now used like `Preload.User.Pilots()`, instead of `PreloadUserPilots()`.
+  It is now used like `Preload.User.Pilots()`, instead of `PreloadUserPilots()`.
 - In the generated model code, `ThenLoad` is now a struct and has been split for each query type.  
-   It is now used like `SelectThenLoad.User.Pilots()`, instead of `ThenLoadUserPilots()`.
+  It is now used like `SelectThenLoad.User.Pilots()`, instead of `ThenLoadUserPilots()`.
 - In the generated model code, the **Load** interfaces no longer include the name of the source model since it is a method on the model.  
-   It now looks like `*models.User.LoadPilots` instead of `*models.User.LoadUserPilots`.
+  It now looks like `*models.User.LoadPilots` instead of `*models.User.LoadUserPilots`.
 - Made changes to better support generating code in multiple languages.
 - Mark queries with `ON DUPLICATE KEY UPDATE` as unretrievable in MySQL.
 - Unretrievable `INSERT` queries using `One, All, Cursor` now immediately return `orm.ErrCannotRetrieveRow` instead of executing the query first.
@@ -704,9 +704,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Moved `orm.Hooks` to `bob.Hooks` since it should not be limited to only ORM queries.
 - Moved `mods.QueryModFunc` to `bob.ModFunc` since it should be available to all packages.
 - The mod capability for `orm.Setter` is now reversed. It should now be a mod for Insert and have a method that returns a mod for Update.  
-   This makes more sense since one would at most use one setter during updates, but can use multiple setters in a bulk insert.
+  This makes more sense since one would at most use one setter during updates, but can use multiple setters in a bulk insert.
 - `table.InsertQ` has been renamed to `table.Insert`. The old implementation of `Insert` has been removed.  
-   The same functionality can be achieved in the following way:
+  The same functionality can be achieved in the following way:
 
   ```go
   //----------------------------------------------
@@ -726,11 +726,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ```
 
 - `table.UpdateQ` has been renamed to `table.Update`. The old implementation of `Update` has been removed.  
-   The same functionality can be achieved by using `model.Update()` or `modelSlice.UpdateAll()`.
+  The same functionality can be achieved by using `model.Update()` or `modelSlice.UpdateAll()`.
 - `table.DeleteQ` has been renamed to `table.Delete`. The old implementation of `Delete` has been removed.  
-   The same functionality can be achieved by using `modelSlice.DeleteAll()` or creating an `Delete` query using `table.Delete()`.
+  The same functionality can be achieved by using `modelSlice.DeleteAll()` or creating an `Delete` query using `table.Delete()`.
 - `BeforeInsertHooks` now only takes a single `ModelSetter` at a time.  
-   This is because it is not possible to know before executing the queries exactly how many setters are being used since additional rows can be inserted by applying another setter as a mod.
+  This is because it is not possible to know before executing the queries exactly how many setters are being used since additional rows can be inserted by applying another setter as a mod.
 - `bob.Cache()` now requires an `Executor`. This is used to run any query hooks.
 - `bob.Prepare()` now requires a type parameter to be used to bind named arguments. The type can either be:
   - A struct with fields that match the named arguments in the query
